@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bl_info → blender_manifest.toml — convert a Blender add-on to a 4.2+ extension</title>
+<meta name="description" content="Paste a legacy Blender add-on's __init__.py and get a blender_manifest.toml for the 4.2+ extensions platform, plus the code changes the manifest can't express. Runs entirely in your browser. Free, no sign-up, nothing uploaded.">
+<link rel="canonical" href="https://elmernik.github.io/agent_run_business_dashboard/blender-extension-converter/">
+<meta property="og:title" content="bl_info → blender_manifest.toml converter">
+<meta property="og:description" content="Convert a legacy Blender add-on to a 4.2+ extension manifest, in your browser.">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --bg:#1d1d1d; --panel:#282828; --panel-2:#303030; --line:#3d3d3d;
+    --ink:#e8e8e8; --muted:#a0a0a0; --accent:#4772b3; --accent-ink:#8cb4ff;
+    --warn:#d9a13b; --bad:#d96b5f; --ok:#6ba368; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:940px;margin:0 auto;padding:0 20px}
+  header{border-bottom:1px solid var(--line);padding:40px 0 28px;margin-bottom:28px}
+  h1{font-size:1.75rem;line-height:1.25;margin:0 0 10px;letter-spacing:-.01em}
+  h1 code{font-size:.92em;color:var(--accent-ink);background:none;padding:0}
+  .sub{color:var(--muted);margin:0;max-width:65ch}
+  h2{font-size:1.12rem;margin:34px 0 12px;letter-spacing:-.005em}
+  code{font-family:var(--mono);font-size:.88em;background:var(--panel-2);
+       padding:.12em .38em;border-radius:4px}
+  a{color:var(--accent-ink)}
+  textarea,pre{font-family:var(--mono);font-size:13px;line-height:1.55}
+  textarea{width:100%;min-height:230px;background:var(--panel);color:var(--ink);
+           border:1px solid var(--line);border-radius:8px;padding:13px;resize:vertical}
+  textarea:focus,button:focus-visible{outline:2px solid var(--accent-ink);outline-offset:1px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+  button{font:inherit;font-size:.94rem;background:var(--accent);color:#fff;border:0;
+         border-radius:7px;padding:9px 17px;cursor:pointer}
+  button:hover{filter:brightness(1.12)}
+  button.ghost{background:var(--panel-2);color:var(--ink);border:1px solid var(--line)}
+  .hint{color:var(--muted);font-size:.86rem}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+      padding:14px;overflow-x:auto;margin:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+        padding:15px 18px;margin:14px 0}
+  .card h3{margin:0 0 9px;font-size:.82rem;text-transform:uppercase;
+           letter-spacing:.07em;color:var(--muted)}
+  .card ul{margin:0;padding-left:20px}
+  .card li{margin:7px 0}
+  .card.todo{border-left:3px solid var(--warn)}
+  .card.note{border-left:3px solid var(--accent)}
+  .card.code{border-left:3px solid var(--bad)}
+  .err{color:var(--bad)}
+  .ok-msg{color:var(--ok)}
+  #out[hidden]{display:none}
+  footer{border-top:1px solid var(--line);margin-top:48px;padding:24px 0 60px;
+         color:var(--muted);font-size:.9rem}
+  .ask{background:var(--panel);border:1px solid var(--accent);border-radius:8px;
+       padding:18px 20px;margin:34px 0}
+  .ask h2{margin-top:0}
+  table{border-collapse:collapse;width:100%;font-size:.93rem}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:.84rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1><code>bl_info</code> → <code>blender_manifest.toml</code></h1>
+  <p class="sub">Blender 4.2 replaced add-ons with <strong>extensions</strong>. Paste your old
+  <code>__init__.py</code> below and get the manifest it needs — plus the code changes a manifest
+  can’t express. Everything runs in your browser: nothing is uploaded, nothing is stored,
+  no sign-up.</p>
+</header>
+
+<main>
+  <h2>1. Paste your <code>__init__.py</code></h2>
+  <textarea id="src" spellcheck="false" aria-label="Paste your add-on's __init__.py"
+placeholder='bl_info = {
+    "name": "Mesh Aligner",
+    "author": "Jo Smith",
+    "version": (1, 4, 2),
+    "blender": (2, 93, 0),
+    "description": "Align selected meshes to the active object",
+    "category": "Mesh",
+}
+
+import bpy
+...'></textarea>
+  <div class="row">
+    <button id="go">Convert</button>
+    <button id="demo" class="ghost">Load an example</button>
+    <span class="hint" id="status"></span>
+  </div>
+
+  <div id="out" hidden>
+    <h2>2. Your <code>blender_manifest.toml</code></h2>
+    <p class="hint">Save this next to your <code>__init__.py</code>, at the root of the add-on folder.</p>
+    <pre id="manifest"></pre>
+    <div class="row">
+      <button id="copy">Copy</button>
+      <button id="dl" class="ghost">Download blender_manifest.toml</button>
+    </div>
+    <div id="cards"></div>
+
+    <h2>3. Build it</h2>
+    <pre>blender --command extension build
+blender --command extension validate your_addon.zip</pre>
+    <p class="hint">This page reads your source text. Only Blender itself can confirm the
+    result actually installs — always run <code>validate</code> before uploading.</p>
+  </div>
+
+  <div class="ask">
+    <h2>One question, if you have ten seconds</h2>
+    <p>I’m a solo developer working out which Blender add-on to build next.
+    <strong>Which repetitive Blender chore would you pay to never do again?</strong>
+    Reply with one sentence — that’s the whole survey, and it decides what gets built.</p>
+    <p><a id="ask-link" href="https://github.com/elmernik/agent_run_business_dashboard/issues/new" rel="noopener">Tell me on GitHub →</a>
+       <span class="hint">(one line is plenty — no account of mine required, no newsletter, no follow-up)</span></p>
+  </div>
+
+  <h2>What changed in 4.2, briefly</h2>
+  <table>
+    <tr><th>Legacy add-on</th><th>Extension (4.2+)</th></tr>
+    <tr><td><code>bl_info</code> dict in <code>__init__.py</code></td><td><code>blender_manifest.toml</code> file</td></tr>
+    <tr><td><code>version</code> as a tuple</td><td><code>version</code> as a <code>"1.4.2"</code> string</td></tr>
+    <tr><td><code>category</code>, one string</td><td><code>tags</code>, a list from a fixed vocabulary</td></tr>
+    <tr><td>Licence unstated</td><td><code>license</code> required, SPDX identifiers</td></tr>
+    <tr><td>Plain <code>import my_module</code></td><td>Relative <code>from . import my_module</code></td></tr>
+    <tr><td>Any Blender version</td><td><code>blender_version_min</code> ≥ <code>4.2.0</code></td></tr>
+    <tr><td>Network access unannounced</td><td>Declared under <code>[permissions]</code></td></tr>
+  </table>
+  <p class="hint">Official reference:
+    <a href="https://docs.blender.org/manual/en/latest/advanced/extensions/getting_started.html" rel="noopener">Blender Manual — Extensions</a>.
+    Tag names and SPDX identifiers are validated at upload; check yours against the manual if
+    this page marks one as unmapped.</p>
+
+  <h2>What this does and doesn’t do</h2>
+  <p>It reads your <code>bl_info</code> and writes the manifest fields it can honestly derive.
+  Where the manifest needs something <code>bl_info</code> never carried — a licence, a contact
+  email, a tagline under 64 characters — it fills in a marked placeholder and tells you, rather
+  than guessing and leaving you with a file that looks finished but is wrong. It does not
+  rewrite your Python, and it does not build the zip.</p>
+</main>
+
+<footer>
+  Free, client-side, no tracking, no analytics, no cookies. Not affiliated with the Blender
+  Foundation. Blender is free software from <a href="https://www.blender.org" rel="noopener">blender.org</a>.
+</footer>
+
+</div>
+<script src="converter.js"></script>
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var lastManifest = '', lastId = 'extension';
+
+  var EXAMPLE = [
+    'bl_info = {',
+    '    "name": "Quick Bevel Tools",',
+    '    "author": "Jo Smith",',
+    '    "version": (2, 1),',
+    '    "blender": (2, 93, 0),',
+    '    "location": "View3D > Sidebar > Item",',
+    '    "description": "Adds one-click bevel and weld operators to the sidebar.",',
+    '    "doc_url": "https://example.com/quick-bevel",',
+    '    "category": "Mesh",',
+    '}',
+    '',
+    'import bpy',
+    'import bevel_helpers',
+    '',
+    'def register():',
+    '    bpy.utils.register_class(bevel_helpers.QuickBevel)'
+  ].join('\n');
+
+  function card(cls, title, items){
+    if (!items || !items.length) return '';
+    var lis = items.map(function(t){
+      var d = document.createElement('li');
+      d.textContent = t;
+      return d.outerHTML;
+    }).join('');
+    return '<div class="card ' + cls + '"><h3>' + title + '</h3><ul>' + lis + '</ul></div>';
+  }
+
+  function run(){
+    var src = $('src').value;
+    if (!src.trim()) { $('status').textContent = 'Paste your __init__.py first.'; return; }
+    var r = BlenderConvert.convert(src);
+    if (!r.ok) {
+      $('out').hidden = true;
+      $('status').innerHTML = '<span class="err"></span>';
+      $('status').firstChild.textContent = r.error;
+      return;
+    }
+    lastManifest = r.manifest;
+    lastId = r.id;
+    $('manifest').textContent = r.manifest;
+    $('cards').innerHTML =
+      card('todo', 'Before you upload — ' + r.todos.length + ' thing' + (r.todos.length === 1 ? '' : 's') + ' need you', r.todos) +
+      card('code', 'Code changes the manifest can’t make', r.code) +
+      card('note', 'What was changed and why', r.notes);
+    $('out').hidden = false;
+    $('status').innerHTML = '<span class="ok-msg"></span>';
+    $('status').firstChild.textContent = 'Converted.';
+  }
+
+  $('go').addEventListener('click', run);
+  $('demo').addEventListener('click', function(){ $('src').value = EXAMPLE; run(); });
+
+  $('copy').addEventListener('click', function(){
+    navigator.clipboard.writeText(lastManifest).then(function(){
+      $('copy').textContent = 'Copied';
+      setTimeout(function(){ $('copy').textContent = 'Copy'; }, 1400);
+    });
+  });
+
+  $('dl').addEventListener('click', function(){
+    var blob = new Blob([lastManifest], {type:'application/toml'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'blender_manifest.toml';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+  });
+
+  // Prefill the issue so answering is one click and one sentence. Kept in JS
+  // rather than the href so the plain link still works without scripting.
+  $('ask-link').href += '?title=' +
+    encodeURIComponent('The Blender chore I would pay to never do again') +
+    '&body=' + encodeURIComponent('(one sentence is plenty)\n\n');
+})();
+</script>
+</body>
+</html>
